@@ -83,5 +83,17 @@ class PostingResource(Resource) :
             connection.close()
             return {'error' : str(e)}, 503
 
+        # 4. 오브젝트 디텍션을 수행해서 레이블의 Name을 가져온다.
+        # AWS 인공지능을 활용 -> detect_labels()
+        client = boto3.client("rekognition", "ap-northeast-2",
+                                aws_access_key_id = Config.ACCESS_KEY,
+                                aws_secret_access_key = Config.SECRET_ACCESS)
+        
+        response = client.detect_labels(Image = {"S3Object" : { "Bucket" : Config.S3_BUCKET,
+                                                                "Name" : new_file_name}},
+                                                                MaxLabels = 5)
+        
+        # 5. 레이블의 Name을 가지고 태그를 만든다.
+
         return {"result" : "업로드에 성공했습니다.",
                 "imgUrl" : Config.S3_LOCATION + file.filename}
