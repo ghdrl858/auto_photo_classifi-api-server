@@ -96,4 +96,5 @@ class PostingResource(Resource) :
         # 5. 레이블의 Name을 가지고 태그를 만든다.
 
         return {"result" : "업로드에 성공했습니다.",
-                "imgUrl" : Config.S3_LOCATION + file.filename}
+                "imgUrl" : Config.S3_LOCATION + file.filename,
+                "Label" : response["Labels"]}, 200
