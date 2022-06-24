@@ -2,11 +2,8 @@ from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_restful import Api
 from config import Config
-from resource.follow import FollowListResource, FollowResource
-from resource.memo import MemoListResource
-from resource.memo_info import MemoResource
 from resource.rekognition import ObjectDetectionResource
-from resource.user import UserLoginResource, UserRegisterResource, UserLogoutResource, jwt_blocklist
+from resource.user import UserLoginResource, UserLogoutResource, jwt_blocklist
 
 app = Flask(__name__)
 

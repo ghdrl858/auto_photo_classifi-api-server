@@ -9,6 +9,7 @@ import boto3
 from config import Config
 
 class ObjectDetectionResource(Resource) :
+    # 사진 업로드하기
     def get(self) :
         # 1. 클라이언트로부터 데이터를 받아온다.
         filename = request.args["filename"]
@@ -25,3 +26,5 @@ class ObjectDetectionResource(Resource) :
 
         return {"result" : "success",
                 "Label" : response["Labels"]}, 200
+        
+  
