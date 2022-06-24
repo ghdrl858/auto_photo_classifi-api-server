@@ -2,7 +2,7 @@ from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_restful import Api
 from config import Config
-from posting import PostingResource
+from resource.posting import PostingResource
 from resource.user import UserLoginResource, UserLogoutResource, UserRegisterResource, jwt_blocklist
 
 app = Flask(__name__)

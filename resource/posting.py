@@ -10,6 +10,7 @@ import boto3
 from config import Config
 
 class PostingResource(Resource) :
+    # 이미지와 사진 설명 업로드하기
     @jwt_required()
     def post(self) :
 
