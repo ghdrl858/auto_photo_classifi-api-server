@@ -15,6 +15,7 @@ class UserRegisterResource(Resource) :
         # {
         #     "email": "abc@naver.com",
         #     "password": "1234"
+        #      "name" : "홍길동"
         # }
 
         # 1. 클라이언트가 body에 보내준 json을 받아온다.
@@ -50,12 +51,12 @@ class UserRegisterResource(Resource) :
 
             # 2) 쿼리문 만들기
             query = '''insert into user
-                    (email, password)
+                    (name, email, password)
                     values
-                    (%s, %s);'''
+                    (%s, %s, %s);'''
 
             # %s에 맞게 튜플로 작성한다.
-            record = (data['email'], hashed_password)
+            record = (data['name'], data['email'], hashed_password)
             
             # 3) 커서를 가져온다.
             cursor = connection.cursor()
@@ -126,7 +127,7 @@ class UserLoginResource(Resource) :
             # 문자열로 바꿔서 다시 저장해서 보낸다.
             i = 0
             for record in result_list :
-                result_list[i]['created_at'] = record['created_at'].isoformat()
+                result_list[i]['createdAt'] = record['createdAt'].isoformat()
                 i = i + 1                
 
             cursor.close()
