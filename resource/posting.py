@@ -10,47 +10,51 @@ import boto3
 from config import Config
 
 class PostingResource(Resource) :
-    # 이미지와 사진 설명 업로드하기
     @jwt_required()
     def post(self) :
 
-        # 1. 클라이언트로부터 데이터를 받아온다.
+        # 1. 클라이언트로부터 데이터 받아온다.
         # photo(file), content(text)
 
         user_id = get_jwt_identity()
 
-        if "photo" not in request.files :
-            return {"error" : "파일을 업로드 하세요."}, 400
+        if 'photo' not in request.files:
+            return {'error' : '파일을 업로드하세요'}, 400
 
-        file = request.files["photo"]
-        content = request.form["content"]
+        file = request.files['photo']
+        content = request.form['content']
 
-        # 2. S3에 파일을 업로드한다.
-        # 파일명을 변경해준다.
-        # 파일명은 유니크하게 만들어야한다.
+        # 2. S3에 파일 업로드한다.
+        # 파일명을 우리가 변경해 준다.
+        # 파일명은, 유니크하게 만들어야 한다.
         current_time = datetime.now()
-        new_file_name = current_time.isoformat().replace(":", "_") + ".jpg"
+        new_file_name = current_time.isoformat().replace(':', '_') + '.jpg'
 
-        # 유저가 올린 파일의 이름을 내가 만든 파일명으로 변경한다.
+        # 유저가 올린 파일의 이름을 내가 만든 파일명으로 변경한다
         file.filename = new_file_name
 
-        # S3에 업로드를 한다.
-        # AWS의 라이브러리를 사용해야한다.
-        # 이 python 라이브러리를 boto3 라이브러리이다.
-        # boto3 설치 : pip install boto3
-        s3 = boto3.client("s3", aws_access_key_id = Config.ACCESS_KEY, 
+        # S3에 업로드 하면 된다.
+        # AWS의 라이브러리를 사용해야 한다.
+        # 이 파이썬 라이브러리가 boto3 라이브러리이다.
+
+        # boto3 라이브러리 설치한다. -> pip install boto3 
+
+        s3 = boto3.client('s3', 
+                    aws_access_key_id = Config.ACCESS_KEY,
                     aws_secret_access_key = Config.SECRET_ACCESS)
 
         try :
-            s3.upload_fileobj(file, Config.S3_BUCKET, file.filename, 
-                            ExtraArgs = {"ACL" : "public-read", "ContentType" : file.content_type})
+            s3.upload_fileobj(file,
+                                Config.S3_BUCKET,
+                                file.filename,
+                                ExtraArgs = {'ACL':'public-read', 'ContentType':file.content_type} )                 
 
-        except Exception as e:
-            return {"error" : str(e)}, 500
-        
+        except Exception as e :
+            return {'error' : str(e)}, 500
+
         # 3. DB에 저장한다.
         try :
-            # 데이터 insert
+            # 데이터 insert 
             # 1. DB에 연결
             connection = get_connection()
 
@@ -58,43 +62,127 @@ class PostingResource(Resource) :
             query = '''insert into posting
                     (content, imgUrl, userId)
                     values
-                    (%s, %s, %s);'''
-
-            # %s에 맞게 튜플로 작성한다.
-            record = (content, new_file_name, user_id)
+                    (%s , %s, %s );'''
             
+            record = (content, new_file_name, user_id)
+
             # 3. 커서를 가져온다.
             cursor = connection.cursor()
 
             # 4. 쿼리문을 커서를 이용해서 실행한다.
             cursor.execute(query, record)
 
-            # 5. 커넥션을 커밋해줘야 한다. -> DB에 영구적으로 반영하라는 뜻
+            # 5. 커넥션을 커밋해줘야 한다 => 디비에 영구적으로 반영하라는 뜻
             connection.commit()
+
+            # 이 포스팅의 아이디 값을 가져온다.
+            posting_id = cursor.lastrowid
 
             # 6. 자원 해제
             cursor.close()
             connection.close()
 
-        # 예외처리
         except mysql.connector.Error as e :
             print(e)
             cursor.close()
             connection.close()
-            return {'error' : str(e)}, 503
+            return {"error" : str(e)}, 503
 
-        # 4. 오브젝트 디텍션을 수행해서 레이블의 Name을 가져온다.
-        # AWS 인공지능을 활용 -> detect_labels()
-        client = boto3.client("rekognition", "ap-northeast-2",
-                                aws_access_key_id = Config.ACCESS_KEY,
+        # 4. 오브젝트 디텍션을 수행해서, 레이블의 Name을 가져온다.
+        client = boto3.client('rekognition', 
+                                'ap-northeast-2',
+                                aws_access_key_id=Config.ACCESS_KEY,
                                 aws_secret_access_key = Config.SECRET_ACCESS)
+        response = client.detect_labels(Image={'S3Object' : {
+                                        'Bucket':Config.S3_BUCKET,        
+                                        'Name':new_file_name }} , 
+                                        MaxLabels=5 )
         
-        response = client.detect_labels(Image = {"S3Object" : { "Bucket" : Config.S3_BUCKET,
-                                                                "Name" : new_file_name}},
-                                                                MaxLabels = 5)
-        
-        # 5. 레이블의 Name을 가지고 태그를 만든다.
+        # 5. 레이블의 Name을 가지고, 태그를 만든다.
 
-        return {"result" : "업로드에 성공했습니다.",
-                "imgUrl" : Config.S3_LOCATION + file.filename,
-                "Label" : response["Labels"]}, 200
+        # 5-1. label['Name'] 의 문자열을 tag_name 테이블에서 찾는다.
+        #      테이블에 이 태그가 있으면, id 를 가져온다.
+        #      이 태그 id와 위의 postingId 를 가지고, 
+        #      tag 테이블에 저장한다.
+
+        # 5-2. 만약 tag_name 테이블에 이 태그가 없으면, 
+        #      tag_name  테이블에, 이 태그이름을 저장하고, 
+        #      저장된 id 값과 위의 postingId 를 가지고,
+        #      tag  테이블에 저장한다. 
+
+        for label in response['Labels'] :
+            # label['Name'] 이 값을 우리는 태그 이름으로 사용할것.
+            try :
+                connection = get_connection()
+
+                query = '''select *
+                        from tag_name
+                        where name = %s;'''
+                
+                record = (label['Name'],)
+
+                # select 문은, dictionary = True 를 해준다.
+                cursor = connection.cursor(dictionary = True)
+
+                cursor.execute(query, record)
+
+                # select 문은, 아래 함수를 이용해서, 데이터를 가져온다.
+                result_list = cursor.fetchall()
+
+                if len(result_list) == 0 :
+                    # 태그이름을 insert 해준다.
+                    query = '''insert into tag_name
+                    (name)
+                    values
+                    (%s );'''
+            
+                    record = (label['Name'],  )
+
+                    # 3. 커서를 가져온다.
+                    cursor = connection.cursor()
+
+                    # 4. 쿼리문을 커서를 이용해서 실행한다.
+                    cursor.execute(query, record)
+
+                    # 5. 커넥션을 커밋해줘야 한다 => 디비에 영구적으로 반영하라는 뜻
+                    connection.commit()
+
+                    # 태그아이디를 가져온다.
+                    tag_name_id = cursor.lastrowid
+                    
+                else :
+                    tag_name_id = result_list[0]['id']
+
+                
+                # posting_id 와 tag_name_id 가 준비되었으니
+                # tag 테이블에 insert 한다.
+
+                query = '''insert into tag
+                    (tagId, postingId)
+                    values
+                    (%s, %s );'''
+            
+                record = (tag_name_id, posting_id )
+
+                # 3. 커서를 가져온다.
+                cursor = connection.cursor()
+
+                # 4. 쿼리문을 커서를 이용해서 실행한다.
+                cursor.execute(query, record)
+
+                # 5. 커넥션을 커밋해줘야 한다 => 디비에 영구적으로 반영하라는 뜻
+                connection.commit()
+
+
+                cursor.close()
+                connection.close()
+
+            except mysql.connector.Error as e :
+                print(e)
+                cursor.close()
+                connection.close()
+                return {"error" : str(e), 'error_no' : 20}, 503
+
+            return {"result" : "업로드에 성공했습니다.",
+                    "imgUrl" : Config.S3_LOCATION + file.filename,
+                    "Label" : response["Labels"]}, 200
