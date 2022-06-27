@@ -3,7 +3,9 @@ from flask_jwt_extended import JWTManager
 from flask_restful import Api
 from config import Config
 from resource.follow import FollowResource
-from resource.posting import PostingResource
+from resource.like import LikeResource
+from resource.posting import PostingFollowResource, PostingInfoResource, PostingResource
+from resource.tag import TagSearchResource
 from resource.user import UserLoginResource, UserLogoutResource, UserRegisterResource, jwt_blocklist
 
 app = Flask(__name__)
@@ -29,9 +31,19 @@ api = Api(app)
 api.add_resource(UserRegisterResource, '/users/register')
 api.add_resource(UserLoginResource, '/users/login')
 api.add_resource(UserLogoutResource, '/users/logout')
+
 api.add_resource(FollowResource, '/follow/<int:follow_id>')
 # api.add_resource(FollowListResource, '/follow')
+
 api.add_resource(PostingResource, "/posting")
+api.add_resource(PostingInfoResource, "/posting/<int:posting_id>")
+
+api.add_resource(TagSearchResource, "/posting/search/tag")
+
+api.add_resource(LikeResource, "/like/<int:posting_id>")
+# api.add_resource(LikeResource, "body : posting_id")
+
+api.add_resource(PostingFollowResource, "/posting/follow")
 
 if __name__ == '__main__' :
     app.run()
