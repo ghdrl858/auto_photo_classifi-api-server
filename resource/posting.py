@@ -10,6 +10,7 @@ import boto3
 from config import Config
 
 class PostingResource(Resource) :
+    # 포스팅한 파일에 대한 자동 태그하기
     @jwt_required()
     def post(self) :
 
