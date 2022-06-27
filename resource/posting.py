@@ -250,6 +250,7 @@ class PostingResource(Resource) :
                 'items' : result_list}, 200
 
 class PostingFollowResource(Resource) :
+    # 친구들이 작성한 포스팅 확인하기
     @jwt_required()
     def get(self) :
         # 1. 클라이언트로부터 데이터를 받아온다.
