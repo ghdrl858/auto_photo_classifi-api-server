@@ -89,17 +89,16 @@ class PostingResource(Resource) :
             connection.close()
             return {"error" : str(e)}, 503
 
-
         # 3. 오브젝트 디텍션을 수행해서, 레이블의 Name을 가져온다.
         client = boto3.client('rekognition', 
-                                'ap-northeast-2',
-                                aws_access_key_id=Config.ACCESS_KEY,
+                                'us-east-1',
+                                aws_access_key_id = Config.ACCESS_KEY,
                                 aws_secret_access_key = Config.SECRET_ACCESS)
         response = client.detect_labels(Image={'S3Object' : {
                                         'Bucket':Config.S3_BUCKET,        
                                         'Name':new_file_name }} , 
                                         MaxLabels=5 )
-        
+
         # 4. 레이블의 Name을 가지고, 태그를 만든다!!!!!!!
 
         # 4-1. label['Name'] 의 문자열을 tag_name 테이블에서 찾는다.
@@ -155,7 +154,7 @@ class PostingResource(Resource) :
                 else :
                     tag_name_id = result_list[0]['id']
 
-                
+                    print(12)
                 # posting_id 와 tag_name_id 가 준비되었으니
                 # tag 테이블에 insert 한다.
 
@@ -532,10 +531,6 @@ class PostingInfoResource(Resource) :
             return {'error' : str(e)}, 503
 
         return {'result' : 'success'}
-
-    @jwt_required()
-    def get(self, posting_id):
-        return
 
 
 class PostingFollowResource(Resource) :
